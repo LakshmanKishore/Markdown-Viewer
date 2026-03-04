@@ -694,7 +694,6 @@ This is a fully client-side application. Your content never leaves your browser 
   mobileExportHtml.addEventListener("click", () => exportHtml.click());
   mobileExportPdf.addEventListener("click", () => exportPdf.click());
   mobileCopyMarkdown.addEventListener("click", () => copyMarkdownButton.click());
-  mobileShareButton.addEventListener("click", () => shareButton.click());
   mobileThemeToggle.addEventListener("click", () => {
     themeToggle.click();
     mobileThemeToggle.innerHTML = themeToggle.innerHTML + " Toggle Dark Mode";
@@ -1552,61 +1551,7 @@ This is a fully client-side application. Your content never leaves your browser 
     return new TextDecoder().decode(pako.inflate(bytes));
   }
 
-  const shareModal = document.getElementById("share-modal");
-  const shareModalWarning = document.getElementById("share-modal-warning");
-  const shareModalCopy = document.getElementById("share-modal-copy");
-  const shareModalClose = document.getElementById("share-modal-close");
-  const shareModalCloseBtn = document.getElementById("share-modal-close-btn");
-  let currentShareUrl = '';
-
-  function openShareModal(shareUrl, tooLarge) {
-    currentShareUrl = shareUrl;
-    shareModalWarning.style.display = tooLarge ? "" : "none";
-    shareModal.classList.add("active");
-    document.addEventListener("keydown", handleShareModalKeydown);
-  }
-
-  function closeShareModal() {
-    shareModal.classList.remove("active");
-    document.removeEventListener("keydown", handleShareModalKeydown);
-  }
-
-  function handleShareModalKeydown(e) {
-    if (e.key === "Escape") closeShareModal();
-  }
-
-  shareModalClose.addEventListener("click", closeShareModal);
-  shareModalCloseBtn.addEventListener("click", closeShareModal);
-  shareModal.addEventListener("click", function (e) {
-    if (e.target === shareModal) closeShareModal();
-  });
-
-  shareModalCopy.addEventListener("click", function () {
-    const originalText = shareModalCopy.innerHTML;
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(currentShareUrl).then(() => {
-        shareModalCopy.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
-        setTimeout(() => { shareModalCopy.innerHTML = originalText; }, 2000);
-      }).catch(() => {
-        // clipboard.writeText failed; nothing further to do in secure context
-      });
-    } else {
-      try {
-        const tempInput = document.createElement("textarea");
-        tempInput.value = currentShareUrl;
-        document.body.appendChild(tempInput);
-        tempInput.select();
-        document.execCommand("copy");
-        document.body.removeChild(tempInput);
-        shareModalCopy.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
-      } catch (_) {
-        shareModalCopy.innerHTML = '<i class="bi bi-clipboard"></i> Copy failed';
-      }
-      setTimeout(() => { shareModalCopy.innerHTML = originalText; }, 2000);
-    }
-  });
-
-  shareButton.addEventListener("click", function () {
+  function copyShareUrl(btn) {
     const markdownText = markdownEditor.value;
     let encoded;
     try {
@@ -1620,12 +1565,38 @@ This is a fully client-side application. Your content never leaves your browser 
     const shareUrl = window.location.origin + window.location.pathname + '#share=' + encoded;
     const tooLarge = shareUrl.length > MAX_SHARE_URL_LENGTH;
 
-    if (!tooLarge) {
-      window.location.hash = 'share=' + encoded;
+    const originalHTML = btn.innerHTML;
+    const copiedHTML = '<i class="bi bi-check-lg"></i> Copied!';
+
+    function onCopied() {
+      if (!tooLarge) {
+        window.location.hash = 'share=' + encoded;
+      }
+      btn.innerHTML = copiedHTML;
+      setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
     }
 
-    openShareModal(shareUrl, tooLarge);
-  });
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(shareUrl).then(onCopied).catch(() => {
+        // clipboard.writeText failed; nothing further to do in secure context
+      });
+    } else {
+      try {
+        const tempInput = document.createElement("textarea");
+        tempInput.value = shareUrl;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempInput);
+        onCopied();
+      } catch (_) {
+        // copy failed silently
+      }
+    }
+  }
+
+  shareButton.addEventListener("click", function () { copyShareUrl(shareButton); });
+  mobileShareButton.addEventListener("click", function () { copyShareUrl(mobileShareButton); });
 
   function loadFromShareHash() {
     if (typeof pako === 'undefined') return;
