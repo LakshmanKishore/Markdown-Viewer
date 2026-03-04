@@ -1553,17 +1553,16 @@ This is a fully client-side application. Your content never leaves your browser 
   }
 
   const shareModal = document.getElementById("share-modal");
-  const shareUrlDisplay = document.getElementById("share-url-display");
   const shareModalWarning = document.getElementById("share-modal-warning");
   const shareModalCopy = document.getElementById("share-modal-copy");
   const shareModalClose = document.getElementById("share-modal-close");
   const shareModalCloseBtn = document.getElementById("share-modal-close-btn");
+  let currentShareUrl = '';
 
   function openShareModal(shareUrl, tooLarge) {
-    shareUrlDisplay.value = shareUrl;
+    currentShareUrl = shareUrl;
     shareModalWarning.style.display = tooLarge ? "" : "none";
     shareModal.classList.add("active");
-    shareUrlDisplay.select();
     document.addEventListener("keydown", handleShareModalKeydown);
   }
 
@@ -1585,19 +1584,23 @@ This is a fully client-side application. Your content never leaves your browser 
   shareModalCopy.addEventListener("click", function () {
     const originalText = shareModalCopy.innerHTML;
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(shareUrlDisplay.value).then(() => {
+      navigator.clipboard.writeText(currentShareUrl).then(() => {
         shareModalCopy.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
         setTimeout(() => { shareModalCopy.innerHTML = originalText; }, 2000);
       }).catch(() => {
-        shareUrlDisplay.select();
+        // clipboard.writeText failed; nothing further to do in secure context
       });
     } else {
-      shareUrlDisplay.select();
       try {
+        const tempInput = document.createElement("textarea");
+        tempInput.value = currentShareUrl;
+        document.body.appendChild(tempInput);
+        tempInput.select();
         document.execCommand("copy");
+        document.body.removeChild(tempInput);
         shareModalCopy.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
       } catch (_) {
-        shareModalCopy.innerHTML = '<i class="bi bi-clipboard"></i> Press Ctrl+C';
+        shareModalCopy.innerHTML = '<i class="bi bi-clipboard"></i> Copy failed';
       }
       setTimeout(() => { shareModalCopy.innerHTML = originalText; }, 2000);
     }
